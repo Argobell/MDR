@@ -1,33 +1,43 @@
 import os
-from crewai import LLM, Agent, Task, Crew, Process
-from pydantic import BaseModel, Field
 from typing import Type
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
 from linkup import LinkupClient
+from crewai import Agent, Task, Crew, Process, LLM
+from crewai.tools import BaseTool
+
+# Load environment variables (for non-LinkUp settings)
+load_dotenv()
+
 
 def get_llm_client():
     """Initialize and return the LLM client"""
     return LLM(
-        model = "qwen3:8b",
-        base_url = "http://localhost:11434"
+        model="ollama/qwen3:8b",
+        base_url="http://localhost:11434"
     )
 
-class LinkUpSerachInput:
+# Define LinkUp Search Tool
+
+
+class LinkUpSearchInput(BaseModel):
     """Input schema for LinkUp Search Tool."""
     query: str = Field(description="The search query to perform")
-    depth: str = Field(default="standard", description="The depth of the search, can be 'standard' or 'deep'")
+    depth: str = Field(default="standard",
+                       description="Depth of search: 'standard' or 'deep'")
     output_type: str = Field(
-        default="searchResults",
-        description="The output type, can be'searchResults' or 'searchAnswer'"
-    )
+        default="searchResults", description="Output type: 'searchResults', 'sourcedAnswer', or 'structured'")
 
-class LinkUpSearchTool(BaseModel):
+
+class LinkUpSearchTool(BaseTool):
     name: str = "LinkUp Search"
-    description: str = "Retrieve relevant information from the web using LinkUp and return results"
-    args: Type[BaseModel] = LinkUpSerachInput
+    description: str = "Search the web for information using LinkUp and return comprehensive results"
+    args_schema: Type[BaseModel] = LinkUpSearchInput
 
     def __init__(self):
         super().__init__()
-    def _run(self, query: str, depth: str = "standard", output_type: str = "searchResults")-> str:
+
+    def _run(self, query: str, depth: str = "standard", output_type: str = "searchResults") -> str:
         """Execute LinkUp search and return results."""
         try:
             # Initialize LinkUp client with API key from environment variables
@@ -43,7 +53,8 @@ class LinkUpSearchTool(BaseModel):
             return str(search_response)
         except Exception as e:
             return f"Error occurred while searching: {str(e)}"
-        
+
+
 def create_research_crew(query: str):
     """Create and configure the research crew with all agents and tasks"""
     # Initialize tools
@@ -55,7 +66,7 @@ def create_research_crew(query: str):
     web_searcher = Agent(
         role="Web Searcher",
         goal="Find the most relevant information on the web, along with source links (urls).",
-        backstory = "An expert at formulating search queries and retrieving relevant information. Passes the results to the 'Research Analyst' only.",
+        backstory="An expert at formulating search queries and retrieving relevant information. Passes the results to the 'Research Analyst' only.",
         verbose=True,
         allow_delegation=True,
         tools=[linkup_search_tool],
@@ -82,7 +93,7 @@ def create_research_crew(query: str):
         llm=client,
     )
 
-    # Define the task
+    # Define tasks
     search_task = Task(
         description=f"Search for comprehensive information about: {query}.",
         agent=web_searcher,
@@ -113,6 +124,7 @@ def create_research_crew(query: str):
     )
 
     return crew
+
 
 def run_research(query: str):
     """Run the research process and return results"""
