@@ -1,6 +1,6 @@
 # 🚀 MDR - 你的智能研究助手
 
-欢迎来到 **MDR（MCP-Powered Deep Researcher）**！  
+欢迎来到 **MDR（MCP-Powered-Deep-Researcher）**！  
 ## 💡 它能做什么？
 
 - 🔍 执行标准或深度网络搜索
